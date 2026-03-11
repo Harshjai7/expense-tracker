@@ -1,0 +1,2629 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+    <title>Expense Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f5f3f0;
+            --bg-card: #ffffff;
+            --bg-input: #faf9f7;
+            --bg-nav: #ffffff;
+            --bg-stat: #faf9f7;
+            --bg-transaction: #faf9f7;
+            --bg-split: #f4f5f9;
+            --bg-split-item: #ffffff;
+            --text-primary: #1c1917;
+            --text-secondary: #78716c;
+            --text-muted: #a8a29e;
+            --border: #e7e5e4;
+            --border-focus: #2563eb;
+            --accent: #2563eb;
+            --accent-light: rgba(99, 102, 241, 0.12);
+            --accent-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+            --income: #10b981;
+            --income-bg: rgba(16, 185, 129, 0.08);
+            --expense: #ef4444;
+            --expense-bg: rgba(239, 68, 68, 0.08);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+            --shadow-accent: 0 4px 20px rgba(37, 99, 235, 0.25);
+            --modal-overlay: rgba(0,0,0,0.4);
+            --chart-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0c0a09;
+            --bg-card: #1c1917;
+            --bg-input: #292524;
+            --bg-nav: #1c1917;
+            --bg-stat: #292524;
+            --bg-transaction: #292524;
+            --bg-split: #1e2130;
+            --bg-split-item: #2a2d3e;
+            --text-primary: #fafaf9;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --border: #44403c;
+            --border-focus: #60a5fa;
+            --accent: #60a5fa;
+            --accent-light: rgba(96, 165, 250, 0.12);
+            --accent-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+            --income: #4ade80;
+            
+            --expense: #f87171;
+            --expense-bg: rgba(248, 113, 113, 0.12);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.4);
+            --shadow-accent: 0 4px 20px rgba(37, 99, 235, 0.2);
+            --modal-overlay: rgba(0,0,0,0.65);
+            --chart-bg: #1a1d2e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+            overflow-x: hidden;
+            color: var(--text-primary);
+            transition: background 0.35s ease, color 0.35s ease;
+        }
+
+        .container {
+            max-width: 520px;
+            width: 100%;
+            margin: 0 auto;
+            background: var(--bg-card);
+            min-height: calc(100vh - 75px);
+            box-shadow: var(--shadow-lg);
+            transition: background 0.35s ease, box-shadow 0.35s ease;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            background: var(--accent-gradient);
+            color: white;
+            padding: 22px 20px 18px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            letter-spacing: -0.5px;
+            margin-bottom: 3px;
+        }
+
+        .header p {
+            font-size: 13px;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+
+        /* ─── Theme Toggle ─── */
+        .theme-toggle {
+            position: absolute;
+            top: 18px;
+            right: 16px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            z-index: 5;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.3);
+            transform: rotate(20deg);
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.92);
+        }
+
+        .content {
+            padding: 20px;
+            padding-bottom: 24px;
+        }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* ─── Balance Card ─── */
+        .balance-card {
+            background: var(--accent-gradient);
+            color: white;
+            padding: 28px 24px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-accent);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+        }
+
+        .balance-card::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: -20px;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.06);
+        }
+
+        .balance-card h3 {
+            font-size: 13px;
+            opacity: 0.85;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .balance-card .amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        /* ─── Stats Grid ─── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-stat);
+            padding: 18px 16px;
+            border-radius: 14px;
+            border-left: 4px solid;
+            transition: background 0.35s ease, transform 0.2s;
+        }
+
+        .stat-card:active { transform: scale(0.98); }
+
+        .stat-card.income { border-left-color: var(--income); }
+        .stat-card.expense { border-left-color: var(--expense); }
+
+        .stat-card h4 {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            font-weight: 600;
+        }
+
+        .stat-card .amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .stat-card.income .amount { color: var(--income); }
+        .stat-card.expense .amount { color: var(--expense); }
+
+        /* ─── Form Inputs ─── */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.2px;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 13px 14px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: border-color 0.25s, box-shadow 0.25s, background 0.35s;
+            background: var(--bg-input);
+            color: var(--text-primary);
+        }
+
+        .input-group input:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+
+        .input-group select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+        }
+
+        /* ─── Checkbox ─── */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .checkbox-group label {
+            cursor: pointer;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        /* ─── Split Section ─── */
+        .split-users {
+            background: var(--bg-split);
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+        }
+
+        .user-split-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 11px 14px;
+            background: var(--bg-split-item);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .user-split-item:last-child { margin-bottom: 0; }
+        .user-name { font-weight: 600; color: var(--text-primary); font-size: 14px; }
+        .user-amount { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--accent); font-size: 14px; }
+
+        .add-user-btn {
+            padding: 11px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 10px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: opacity 0.2s;
+        }
+
+        .add-user-btn:active { opacity: 0.85; }
+
+        /* ─── Buttons ─── */
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.2s;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            letter-spacing: 0.3px;
+        }
+
+        .btn:active { transform: scale(0.97); }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: var(--shadow-accent);
+        }
+
+        /* ─── Transaction List ─── */
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: var(--text-primary);
+            letter-spacing: -0.2px;
+        }
+
+        .transaction-list { margin-top: 20px; }
+
+        .transaction-item {
+            background: var(--bg-transaction);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+            position: relative;
+            min-height: 68px;
+            transition: background 0.35s ease;
+        }
+
+        .transaction-item.income { border-left-color: var(--income); }
+        .transaction-item.expense { border-left-color: var(--expense); }
+
+        .transaction-actions {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .action-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .action-btn:active { transform: scale(0.9); }
+        .action-btn.edit { color: var(--accent); }
+
+        .action-btn.send { color: var(--income); }
+
+        .send-bill-split-btn {
+            background: none; border: 1px solid var(--accent);
+            color: var(--accent); border-radius: 5px; padding: 3px 8px;
+            font-size: 10px; font-weight: 700; cursor: pointer; white-space: nowrap;
+            font-family: 'Plus Jakarta Sans', sans-serif; margin-left: 4px;
+        }
+        .send-bill-split-btn:active { opacity: .7; }
+        .split-user-row.settled .send-bill-split-btn { display: none; }
+
+        .action-btn.delete { color: var(--expense); }
+
+        .transaction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+            padding-right: 78px;
+            gap: 12px;
+        }
+
+        .transaction-info {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .transaction-info .title {
+            font-weight: 600;
+            margin-bottom: 3px;
+            color: var(--text-primary);
+            word-break: break-word;
+            font-size: 14px;
+        }
+
+        .transaction-info .category {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .transaction-info .date {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .transaction-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 17px;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .transaction-amount.income { color: var(--income); }
+        .transaction-amount.expense { color: var(--expense); }
+
+        .split-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            padding: 2px 9px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .split-details {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--border);
+        }
+
+        .split-user-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 0;
+            gap: 8px;
+        }
+
+        .split-user-info {
+            flex: 1;
+            min-width: 0;
+            font-size: 12px;
+        }
+
+        .settle-btn {
+            background: var(--income);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: opacity 0.2s;
+        }
+
+        .settle-btn:active { opacity: 0.8; }
+        .settle-btn:disabled, .split-user-row.settled .settle-btn { display: none; }
+        .split-user-row.settled { opacity: 0.6; }
+        .split-user-row.settled .settled-badge { font-size: 10px; color: var(--income); font-weight: 700; }
+
+        /* ─── Charts ─── */
+        .chart-container {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 14px;
+            margin-bottom: 18px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: background 0.35s, border-color 0.35s;
+        }
+
+        .chart-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: var(--text-primary);
+        }
+
+        /* ─── Profile ─── */
+        .profile-section { text-align: center; padding: 20px 0; }
+
+        .profile-avatar {
+            width: 96px;
+            height: 96px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 34px;
+            color: white;
+            font-weight: 700;
+            position: relative;
+            cursor: pointer;
+            box-shadow: var(--shadow-accent);
+        }
+
+        .edit-avatar-btn {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: var(--bg-card);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 4px; color: var(--text-primary); }
+        .profile-email { color: var(--text-secondary); margin-bottom: 18px; font-size: 14px; }
+
+        .edit-profile-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+
+        .edit-profile-btn:active { opacity: 0.85; }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        .profile-stat { text-align: center; }
+        .profile-stat .value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--accent); }
+        .profile-stat .label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+
+        /* ─── Monthly Summary ─── */
+        .monthly-summary { margin-top: 30px; }
+        .monthly-summary h3 { font-size: 17px; font-weight: 700; margin-bottom: 14px; color: var(--text-primary); }
+
+        .month-item {
+            background: var(--bg-stat);
+            padding: 18px;
+            border-radius: 14px;
+            margin-bottom: 14px;
+            border-left: 5px solid var(--accent);
+            box-shadow: var(--shadow-sm);
+            transition: background 0.35s;
+        }
+
+        .month-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .month-name { font-weight: 700; color: var(--text-primary); font-size: 16px; }
+        .month-balance { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 20px; }
+        .month-balance.positive { color: var(--income); }
+        .month-balance.negative { color: var(--expense); }
+
+        .month-details { display: flex; gap: 18px; font-size: 13px; font-weight: 600; }
+        .month-income { color: var(--income); }
+        .month-expense { color: var(--expense); }
+
+        .category-breakdown {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed var(--border);
+            font-size: 12px;
+        }
+
+        .category-breakdown-title { font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            color: var(--text-secondary);
+        }
+
+        .category-name { font-size: 11px; }
+        .category-amount { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 11px; }
+
+        .toggle-categories {
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 5px 0;
+            font-weight: 600;
+            margin-top: 5px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* ─── Bottom Nav ─── */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-nav);
+            box-shadow: 0 -2px 16px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+            z-index: 1000;
+            transition: background 0.35s;
+        }
+
+        [data-theme="dark"] .bottom-nav {
+            box-shadow: 0 -2px 16px rgba(0,0,0,0.3);
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 6px 4px;
+            cursor: pointer;
+            transition: transform 0.15s;
+            border: none;
+            background: none;
+            position: relative;
+            color: var(--text-muted);
+        }
+
+        .nav-item:active { transform: scale(0.92); }
+
+        .nav-item.active { color: var(--accent); }
+
+        .nav-item .icon { font-size: 22px; margin-bottom: 2px; }
+        .nav-item .label { font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
+
+        /* ─── Empty State ─── */
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+        .empty-state .icon { font-size: 56px; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
+
+        /* ─── History ─── */
+        .history-item {
+            background: var(--bg-stat);
+            border-left: 4px solid #f59e0b;
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            transition: background 0.35s;
+        }
+
+        .history-item.deleted { border-left-color: var(--expense); }
+        .history-item.edited { border-left-color: #3b82f6; }
+
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .history-action { font-weight: 700; color: var(--text-primary); font-size: 14px; }
+        .history-timestamp { font-size: 11px; color: var(--text-muted); }
+        .history-details { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+        .history-badge-inline {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-right: 5px;
+        }
+
+        .history-badge-inline.edit { background: #dbeafe; color: #1e40af; }
+        .history-badge-inline.delete { background: #fee2e2; color: #991b1b; }
+        .history-badge-inline.settle { background: #d1fae5; color: #065f46; }
+
+        [data-theme="dark"] .history-badge-inline.edit { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        [data-theme="dark"] .history-badge-inline.delete { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        [data-theme="dark"] .history-badge-inline.settle { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+
+        .old-value { text-decoration: line-through; color: var(--expense); }
+        .new-value { color: var(--income); font-weight: 700; }
+
+        /* ─── Modal ─── */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--modal-overlay);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: var(--bg-card);
+            padding: 26px;
+            border-radius: 18px;
+            width: 92%;
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
+            animation: modalSlideUp 0.3s ease;
+            transition: background 0.35s;
+        }
+
+        @keyframes modalSlideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .close-modal {
+            float: right;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-muted);
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover { color: var(--text-primary); }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 400px) {
+            .transaction-header {
+                flex-direction: column;
+                align-items: flex-start;
+                padding-right: 76px;
+            }
+            .transaction-amount { font-size: 15px; }
+            .action-btn { width: 28px; height: 28px; min-width: 28px; font-size: 12px; }
+            .transaction-actions { gap: 4px; }
+            .transaction-header { padding-right: 68px; }
+        }
+
+        @media (max-width: 360px) {
+            .container { max-width: 100%; }
+            .content { padding: 14px; }
+            .header { padding: 16px; }
+            .header h1 { font-size: 19px; }
+            .balance-card .amount { font-size: 26px; }
+            .stat-card .amount { font-size: 18px; }
+            .transaction-item { padding: 12px; }
+            .bottom-nav { padding: 5px 0; }
+            .nav-item .icon { font-size: 19px; }
+            .nav-item .label { font-size: 9px; }
+        }
+
+        @media (max-width: 320px) {
+            .transaction-header { padding-right: 64px; }
+            .action-btn { width: 26px; height: 26px; min-width: 26px; font-size: 11px; }
+            .stats-grid { gap: 10px; }
+            .stat-card { padding: 14px 12px; }
+        }
+
+        @media (min-width: 768px) {
+            body {
+                display: flex;
+                align-items: flex-start;
+                justify-content: center;
+                padding-top: 20px;
+            }
+            .container {
+                max-width: 500px;
+                border-radius: 22px;
+                margin: 20px;
+                min-height: auto;
+            }
+            .bottom-nav {
+                max-width: 500px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-radius: 18px 18px 0 0;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .container { max-width: 520px; }
+            .bottom-nav { max-width: 520px; }
+        }
+
+
+        /* ─── Payment Tracking in Split ─── */
+        .split-payment-section {
+            background: var(--bg-split);
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+        }
+        .split-section-label {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .payer-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--bg-split-item);
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+        .payer-row:last-child { margin-bottom: 0; }
+        .payer-name-display {
+            flex: 1;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        .payer-amount-input {
+            width: 110px;
+            padding: 8px 10px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            text-align: right;
+        }
+        .payer-amount-input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 2px var(--accent-light);
+        }
+        .payer-remove-btn {
+            background: none;
+            border: none;
+            color: var(--expense);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            line-height: 1;
+            opacity: 0.7;
+        }
+        .payer-remove-btn:hover { opacity: 1; }
+        .split-summary-box {
+            background: var(--bg-stat);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 12px;
+            margin-bottom: 14px;
+        }
+        .split-summary-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .settlement-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 12px;
+            border-bottom: 1px dashed var(--border);
+        }
+        .settlement-row:last-child { border-bottom: none; }
+        .settlement-arrow {
+            color: var(--accent);
+            font-weight: 800;
+            margin: 0 6px;
+        }
+        .settlement-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--expense);
+            font-size: 13px;
+        }
+        .remaining-warn {
+            font-size: 11px;
+            color: var(--expense);
+            font-weight: 700;
+            margin-top: 6px;
+            padding: 6px 10px;
+            background: rgba(220, 38, 38, 0.06);
+            border-radius: 6px;
+        }
+        [data-theme="dark"] .remaining-warn {
+            background: rgba(248, 113, 113, 0.08);
+        }
+        .remaining-ok {
+            font-size: 11px;
+            color: var(--income);
+            font-weight: 700;
+            margin-top: 6px;
+        }
+        /* Settlement display in transaction card */
+        .settlement-summary {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid var(--border);
+        }
+        .settlement-summary-title {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .settlement-line {
+            font-size: 11px;
+            padding: 3px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-primary);
+        }
+        .settlement-line .who {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .settlement-line .s-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--expense);
+            font-size: 12px;
+        }
+        .settlement-line.settled-line { opacity: 0.5; text-decoration: line-through; }
+
+        /* ─── Settle Amount Indicator ─── */
+        .settle-info {
+            font-size: 11px;
+            color: var(--income);
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        /* ─── Smooth theme transition for everything ─── */
+        *, *::before, *::after {
+            transition-property: background-color, border-color, color, box-shadow;
+            transition-duration: 0s;
+        }
+
+        html[data-theme] *, html[data-theme] *::before, html[data-theme] *::after {
+            transition-duration: 0.35s;
+            transition-timing-function: ease;
+        }
+
+        /* Prevent transition on first load */
+        html.no-transition *, html.no-transition *::before, html.no-transition *::after {
+            transition: none !important;
+        }
+    
+        .send-options { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+        .send-option-btn {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; border-radius: var(--radius-md, 12px);
+            border: 2px solid var(--border); background: var(--bg-stat);
+            cursor: pointer; transition: all .2s;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .send-option-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+        .send-option-btn:active { transform: scale(.97); }
+        .send-option-icon { font-size: 26px; flex-shrink: 0; }
+        .send-option-text { text-align: left; }
+        .send-option-text .label { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+        .send-option-text .desc { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+        .bill-preview {
+            background: var(--bg-stat); border: 1px solid var(--border);
+            border-radius: 12px; padding: 16px; margin-bottom: 14px;
+            font-size: 13px; line-height: 1.8; color: var(--text-primary);
+        }
+        .bill-preview strong { font-weight: 800; }
+        .bill-preview .bill-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px; font-weight: 700; color: var(--accent); margin: 6px 0;
+        }
+        .copy-toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: var(--text-primary); color: var(--bg-card);
+            padding: 10px 22px; border-radius: 30px; font-size: 13px;
+            font-weight: 700; z-index: 3000; opacity: 0;
+            transition: opacity .3s; pointer-events: none;
+        }
+        .copy-toast.show { opacity: 1; }
+
+
+        .accounts-section { margin-top: 28px; text-align: left; }
+        .accounts-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .accounts-header h3 { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+        .add-account-btn { background: var(--accent); color: white; border: none; padding: 7px 16px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; }
+        .account-card { display: flex; align-items: center; justify-content: space-between; background: var(--bg-stat); padding: 14px 16px; border-radius: 10px; margin-bottom: 8px; border: 1px solid var(--border); }
+        .account-card-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+        .account-icon { font-size: 22px; }
+        .account-name { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+        .account-balance { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px; color: var(--income); margin-right: 8px; }
+        .account-balance.negative { color: var(--expense); }
+        .account-action-btn { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; }
+        .payment-mode-tag { display: inline-block; background: var(--accent-light); color: var(--accent); padding: 2px 8px; border-radius: 8px; font-size: 9px; font-weight: 700; margin-top: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Home Page -->
+        <div id="home" class="page active">
+            <div class="header">
+                <h1>💰 Expense Tracker</h1>
+                <p>Track your money wisely</p>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode" id="themeToggleBtn">🌙</button>
+            </div>
+            <div class="content">
+                <div class="balance-card">
+                    <h3>Total Balance</h3>
+                    <div class="amount" id="totalBalance">₹0.00</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card income">
+                        <h4>Income</h4>
+                        <div class="amount" id="totalIncome">₹0.00</div>
+                    </div>
+                    <div class="stat-card expense">
+                        <h4>Expenses</h4>
+                        <div class="amount" id="totalExpense">₹0.00</div>
+                    </div>
+                </div>
+
+                <div class="section-title">Recent Transactions</div>
+                <div id="recentTransactions"></div>
+            </div>
+        </div>
+
+        <!-- Expense Page -->
+        <div id="expense" class="page">
+            <div class="header">
+                <h1>➖ Add Expense</h1>
+                <p>Record your spending</p>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
+            </div>
+            <div class="content">
+                <form id="expenseForm">
+                    <div class="input-group">
+                        <label>Amount (₹)</label>
+                        <input type="number" id="expenseAmount" placeholder="0.00" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Description</label>
+                        <input type="text" id="expenseDescription" placeholder="What did you buy?" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Category</label>
+                        <select id="expenseCategory" required>
+                            <option value="">Select category</option>
+                            <option value="Food">🍔 Food</option>
+                            <option value="Transport">🚗 Transport</option>
+                            <option value="Shopping">🛍️ Shopping</option>
+                            <option value="Entertainment">🎬 Entertainment</option>
+                            <option value="Bills">💡 Bills</option>
+                            <option value="Health">🏥 Health</option>
+                            <option value="Other">📦 Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Date</label>
+                        <input type="date" id="expenseDate" required>
+                    </div>
+                    
+                    <div class="input-group"><label>Payment Mode</label><select id="expensePaymentMode"><option value="">Select account (optional)</option></select></div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="expenseSplitCheck" onchange="toggleExpenseSplit()">
+                        <label for="expenseSplitCheck">Split with friends</label>
+                    </div>
+
+                    <div id="expenseSplitSection" style="display: none;">
+                        <!-- People in the split -->
+                        <div class="split-payment-section">
+                            <div class="split-section-label">👥 People in this split</div>
+                            <div id="expenseSplitUsers"></div>
+                            <button type="button" class="add-user-btn" onclick="openAddUserModal('expense')">+ Add Person</button>
+                        </div>
+
+                        <!-- Who paid section -->
+                        <div class="split-payment-section">
+                            <div class="split-section-label">💳 Who paid?</div>
+                            <div id="payersList"></div>
+                            <button type="button" class="add-user-btn" onclick="openAddPayerModal()" style="margin-top:8px">+ Add Payer</button>
+                            <div id="paymentValidation"></div>
+                        </div>
+
+                        <!-- Settlement preview -->
+                        <div class="split-summary-box" id="settlementPreview" style="display:none">
+                            <div class="split-summary-title">📊 Who owes whom</div>
+                            <div id="settlementLines"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Add Expense</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Income Page -->
+        <div id="income" class="page">
+            <div class="header">
+                <h1>➕ Add Income</h1>
+                <p>Record your earnings</p>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
+            </div>
+            <div class="content">
+                <form id="incomeForm">
+                    <div class="input-group">
+                        <label>Amount (₹)</label>
+                        <input type="number" id="incomeAmount" placeholder="0.00" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Description</label>
+                        <input type="text" id="incomeDescription" placeholder="Source of income" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Category</label>
+                        <select id="incomeCategory" required>
+                            <option value="">Select category</option>
+                            <option value="Salary">💼 Salary</option>
+                            <option value="Freelance">💻 Freelance</option>
+                            <option value="Business">🏢 Business</option>
+                            <option value="Investment">📈 Investment</option>
+                            <option value="Gift">🎁 Gift</option>
+                            <option value="Settlement">💵 Settlement</option>
+                            <option value="Other">💰 Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Date</label>
+                        <input type="date" id="incomeDate" required>
+                    </div>
+                    <div class="input-group"><label>Payment Mode</label><select id="incomePaymentMode"><option value="">Select account (optional)</option></select></div>
+                    <button type="submit" class="btn btn-primary">Add Income</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Summary Page -->
+        <div id="summary" class="page">
+            <div class="header">
+                <h1>📊 Summary</h1>
+                <p>Your financial overview</p>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
+            </div>
+            <div class="content">
+                <div class="balance-card">
+                    <h3>Net Balance</h3>
+                    <div class="amount" id="summaryBalance">₹0.00</div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Income vs Expense</div>
+                    <canvas id="incomeExpenseChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Expense by Category</div>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Spending Trend (Last 7 Days)</div>
+                    <canvas id="trendChart"></canvas>
+                </div>
+
+                <div class="section-title">All Transactions</div>
+                <div id="allTransactions"></div>
+            </div>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="profile" class="page">
+            <div class="header">
+                <h1>👤 Profile</h1>
+                <p>Your account details</p>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
+            </div>
+            <div class="content">
+                <div class="profile-section">
+                    <div class="profile-avatar" onclick="openEditProfileModal()">
+                        <span id="profileAvatarText">JD</span>
+                        <div class="edit-avatar-btn">✏️</div>
+                    </div>
+                    <div class="profile-name" id="displayProfileName">Enter your name</div>
+                    <div class="profile-email" id="displayProfileEmail">Enter your gmail</div>
+                    <button class="edit-profile-btn" onclick="openEditProfileModal()">Edit Profile</button>
+
+                    <div class="profile-stats">
+                        <div class="profile-stat">
+                            <div class="value" id="profileTransactions">0</div>
+                            <div class="label">Transactions</div>
+                        </div>
+                        <div class="profile-stat">
+                            <div class="value" id="profileCategories">0</div>
+                            <div class="label">Categories</div>
+                        </div>
+                        <div class="profile-stat">
+                            <div class="value" id="profileDays">0</div>
+                            <div class="label">Days Active</div>
+                        </div>
+                    </div>
+
+                    <div class="accounts-section"><div class="accounts-header"><h3>My Accounts</h3><button class="add-account-btn" onclick="openAddAccountModal()">+ Add</button></div><div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">Total: <span id="accountsTotalBalance" style="font-family:JetBrains Mono,monospace;font-weight:700;color:var(--accent)">&#8377;0.00</span></div><div id="accountsList"></div></div><div class="monthly-summary">
+                        <h3>📅 Monthly Summary</h3>
+                        <div id="monthlySummaryList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Page -->
+        <div id="history" class="page">
+            <div class="header">
+                <h1>📜 Activity History</h1>
+                <p>Track all changes</p>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
+            </div>
+            <div class="content">
+                <div class="section-title">Recent Activities</div>
+                <div id="historyList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="showPage('home')">
+            <div class="icon">🏠</div>
+            <div class="label">Home</div>
+        </button>
+        <button class="nav-item" onclick="showPage('expense')">
+            <div class="icon">➖</div>
+            <div class="label">Expense</div>
+        </button>
+        <button class="nav-item" onclick="showPage('income')">
+            <div class="icon">➕</div>
+            <div class="label">Income</div>
+        </button>
+        <button class="nav-item" onclick="showPage('summary')">
+            <div class="icon">📊</div>
+            <div class="label">Summary</div>
+        </button>
+        <button class="nav-item" id="historyNavItem" onclick="showPage('history')">
+            <div class="icon">📜</div>
+            <div class="label">History</div>
+        </button>
+        <button class="nav-item" onclick="showPage('profile')">
+            <div class="icon">👤</div>
+            <div class="label">Profile</div>
+        </button>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeAddUserModal()">&times;</span>
+                Add Person to Split
+            </div>
+            <div class="input-group">
+                <label>Person Name</label>
+                <input type="text" id="newUserName" placeholder="Enter name">
+            </div>
+            <button class="btn btn-primary" onclick="addUserToSplit()">Add Person</button>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeEditProfileModal()">&times;</span>
+                Edit Profile
+            </div>
+            <div class="input-group">
+                <label>Full Name</label>
+                <input type="text" id="editProfileName" placeholder="Enter your name">
+            </div>
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" id="editProfileEmail" placeholder="Enter your email">
+            </div>
+            <div class="input-group">
+                <label>Phone Number</label>
+                <input type="tel" id="editProfilePhone" placeholder="Enter your phone">
+            </div>
+            <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- Edit Transaction Modal -->
+    <div id="editTransactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeEditTransactionModal()">&times;</span>
+                Edit Transaction
+            </div>
+            <div class="input-group">
+                <label>Amount (₹)</label>
+                <input type="number" id="editTransactionAmount" placeholder="0.00" step="0.01" required>
+            </div>
+            <div class="input-group">
+                <label>Description</label>
+                <input type="text" id="editTransactionDescription" placeholder="Description" required>
+            </div>
+            <div class="input-group">
+                <label>Category</label>
+                <select id="editTransactionCategory" required>
+                    <option value="">Select category</option>
+                    <option value="Food">🍔 Food</option>
+                    <option value="Transport">🚗 Transport</option>
+                    <option value="Shopping">🛍️ Shopping</option>
+                    <option value="Entertainment">🎬 Entertainment</option>
+                    <option value="Bills">💡 Bills</option>
+                    <option value="Health">🏥 Health</option>
+                    <option value="Salary">💼 Salary</option>
+                    <option value="Freelance">💻 Freelance</option>
+                    <option value="Business">🏢 Business</option>
+                    <option value="Investment">📈 Investment</option>
+                    <option value="Gift">🎁 Gift</option>
+                    <option value="Settlement">💵 Settlement</option>
+                    <option value="Other">📦 Other</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Date</label>
+                <input type="date" id="editTransactionDate" required>
+            </div>
+            <button class="btn btn-primary" onclick="saveTransactionEdit()">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeDeleteConfirmModal()">&times;</span>
+                Delete Transaction
+            </div>
+            <p style="margin-bottom: 20px; color: var(--text-secondary);">Are you sure you want to delete this transaction? This action cannot be undone.</p>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" style="background: var(--bg-stat); color: var(--text-primary);" onclick="closeDeleteConfirmModal()">Cancel</button>
+                <button class="btn" style="background: var(--expense); color: white;" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Add Payer Modal -->
+    <div id="addPayerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><span class="close-modal" onclick="closeAddPayerModal()">&times;</span>💳 Who Paid?</div>
+            <div class="input-group"><label>Select Person</label>
+                <select id="payerSelect">
+                    <option value="">Choose who paid</option>
+                </select>
+            </div>
+            <div class="input-group"><label>Amount Paid (₹)</label>
+                <input type="number" id="payerAmountInput" placeholder="0.00" step="0.01">
+            </div>
+            <button class="btn btn-primary" onclick="addPayer()">Add Payer</button>
+        </div>
+    </div>
+
+    <div id="addAccountModal" class="modal"><div class="modal-content"><div class="modal-header"><span class="close-modal" onclick="closeAddAccountModal()">&times;</span>Add Account</div><div class="input-group"><label>Account Name</label><input type="text" id="newAccountName" placeholder="e.g. SBI, Paytm, Cash"></div><div class="input-group"><label>Account Type</label><select id="newAccountType"><option value="bank">Bank Account</option><option value="upi">UPI / Wallet</option><option value="cash">Cash</option><option value="credit">Credit Card</option><option value="other">Other</option></select></div><div class="input-group"><label>Current Balance</label><input type="number" id="newAccountBalance" placeholder="0.00" step="0.01"></div><button class="btn btn-primary" onclick="addAccount()">Add Account</button></div></div>
+<div id="editAccountModal" class="modal"><div class="modal-content"><div class="modal-header"><span class="close-modal" onclick="closeEditAccountModal()">&times;</span>Edit Account</div><div class="input-group"><label>Account Name</label><input type="text" id="editAccountName"></div><div class="input-group"><label>Account Type</label><select id="editAccountType"><option value="bank">Bank Account</option><option value="upi">UPI / Wallet</option><option value="cash">Cash</option><option value="credit">Credit Card</option><option value="other">Other</option></select></div><div class="input-group"><label>Current Balance</label><input type="number" id="editAccountBalance" step="0.01"></div><div style="display:flex;gap:10px"><button class="btn" style="background:var(--expense);color:white" onclick="deleteAccount()">Delete</button><button class="btn btn-primary" onclick="saveAccountEdit()">Save</button></div></div></div>
+    <!-- Send Bill Modal -->
+    <div id="sendBillModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><span class="close-modal" onclick="closeSendBillModal()">&times;</span>📤 Send Bill</div>
+            <div class="bill-preview" id="billPreview"></div>
+            <div class="send-options">
+                <button class="send-option-btn" onclick="sendViaWhatsApp()"><span class="send-option-icon">💬</span><div class="send-option-text"><div class="label">WhatsApp</div><div class="desc">Send via WhatsApp message</div></div></button>
+                <button class="send-option-btn" onclick="sendViaSMS()"><span class="send-option-icon">📱</span><div class="send-option-text"><div class="label">SMS / Text</div><div class="desc">Send via text message</div></div></button>
+                <button class="send-option-btn" onclick="sendViaEmail()"><span class="send-option-icon">📧</span><div class="send-option-text"><div class="label">Email</div><div class="desc">Send via email</div></div></button>
+                <button class="send-option-btn" onclick="copyBillText()"><span class="send-option-icon">📋</span><div class="send-option-text"><div class="label">Copy to Clipboard</div><div class="desc">Copy bill text to paste anywhere</div></div></button>
+            </div>
+        </div>
+    </div>
+    <div class="copy-toast" id="copyToast">Copied to clipboard!</div>
+
+    <script>
+        // ═══ THEME MANAGEMENT ═══
+        function initTheme() {
+            document.documentElement.classList.add('no-transition');
+            const saved = localStorage.getItem('expenseTrackerTheme');
+            const theme = saved || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            updateThemeIcons(theme);
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    document.documentElement.classList.remove('no-transition');
+                });
+            });
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('expenseTrackerTheme', next);
+            updateThemeIcons(next);
+            // Re-render charts with new theme colors
+            if (document.getElementById('summary').classList.contains('active')) {
+                updateCharts();
+            }
+        }
+
+        function updateThemeIcons(theme) {
+            document.querySelectorAll('.theme-toggle').forEach(btn => {
+                btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+            });
+        }
+
+        initTheme();
+
+        // ═══ CHART COLOR PALETTES ═══
+        const CATEGORY_COLORS = {
+            'Food':          { bg: '#f97316', border: '#ea580c' },
+            'Transport':     { bg: '#3b82f6', border: '#2563eb' },
+            'Shopping':      { bg: '#ec4899', border: '#db2777' },
+            'Entertainment': { bg: '#8b5cf6', border: '#7c3aed' },
+            'Bills':         { bg: '#eab308', border: '#ca8a04' },
+            'Health':        { bg: '#14b8a6', border: '#0d9488' },
+            'Other':         { bg: '#6b7280', border: '#4b5563' },
+            'Salary':        { bg: '#10b981', border: '#059669' },
+            'Freelance':     { bg: '#06b6d4', border: '#0891b2' },
+            'Business':      { bg: '#f43f5e', border: '#e11d48' },
+            'Investment':    { bg: '#a855f7', border: '#9333ea' },
+            'Gift':          { bg: '#f472b6', border: '#ec4899' },
+            'Settlement':    { bg: '#22c55e', border: '#16a34a' },
+        };
+
+        const PIE_PALETTE = [
+            '#f97316', '#3b82f6', '#ec4899', '#8b5cf6', '#eab308',
+            '#14b8a6', '#6b7280', '#f43f5e', '#06b6d4', '#a855f7',
+            '#22c55e', '#f472b6', '#84cc16'
+        ];
+
+        function getChartTextColor() {
+            return document.documentElement.getAttribute('data-theme') === 'dark' ? '#9ca3af' : '#6b7280';
+        }
+
+        function getChartGridColor() {
+            return document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+        }
+
+        // ═══ DATA ═══
+        let transactions = [];
+        let expenseSplitUsers = [];
+        let currentSplitType = '';
+        let chartInstances = {};
+        let currentEditingTransactionId = null;
+        let currentDeletingTransactionId = null;
+        let activityHistory = [];
+        let userProfile = {
+            name: 'Enter your name',
+            email: 'Enter your email',
+            phone: ''
+        };
+
+        function initializeData() {
+            const savedData = localStorage.getItem('expenseTrackerData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                transactions = data.transactions || [];
+                userProfile = data.userProfile || userProfile;
+                activityHistory = data.activityHistory || [];
+            }
+            updateProfileDisplay();
+        }
+
+        function saveData() {
+            localStorage.setItem('expenseTrackerData', JSON.stringify({
+                transactions,
+                userProfile,
+                activityHistory
+            }));
+        }
+
+        function addToHistory(action, details) {
+            activityHistory.unshift({
+                id: Date.now(),
+                action,
+                details,
+                timestamp: new Date().toISOString()
+            });
+            if (activityHistory.length > 50) activityHistory = activityHistory.slice(0, 50);
+            saveData();
+        }
+
+        // ═══ NAVIGATION ═══
+        function showPage(pageId) {
+            closeAllModals();
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            const navBtn = document.querySelector(`.nav-item[onclick="showPage('${pageId}')"]`);
+            if (navBtn) navBtn.classList.add('active');
+            
+            if (pageId === 'home' || pageId === 'profile') {
+                updateDisplay();
+                if (pageId === 'profile') { updateMonthlySummary(); updateAccountsDisplay(); populatePaymentModeDropdowns(); }
+            } else if (pageId === 'summary') {
+                updateDisplay();
+                updateCharts();
+            } else if (pageId === 'history') {
+                updateHistoryDisplay();
+            }
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // ═══ TRANSACTIONS ═══
+        function addTransaction(type, amount, description, category, date, splitData = null) {
+            const t = {
+                id: Date.now(),
+                type,
+                amount: parseFloat(amount),
+                description,
+                category,
+                date,
+                paymentMode: null,
+                paymentModeName: null,
+                splitUsers: null,
+                payers: null,
+                settlements: null
+            };
+
+            if (splitData && splitData.users && splitData.users.length > 1) {
+                t.splitUsers = splitData.users.map(u => ({
+                    name: u.name,
+                    amount: u.amount || 0,
+                    settled: u.settled || false
+                }));
+                t.payers = splitData.payers || [];
+                t.settlements = calculateSettlements(t.amount, t.splitUsers, t.payers);
+            }
+
+            transactions.unshift(t);
+            saveData();
+            updateDisplay();
+        }
+
+        function getEffectiveExpenseAmount(transaction) {
+            if (!transaction.settlements || transaction.settlements.length === 0) {
+                // Legacy: old split model
+                if (!transaction.splitUsers || transaction.splitUsers.length <= 1) return transaction.amount;
+                const perPerson = transaction.amount / transaction.splitUsers.length;
+                const settledCount = transaction.splitUsers.filter(u => u.settled).length;
+                return transaction.amount - (settledCount * perPerson);
+            }
+            // New model: your effective cost = your share - settlements received
+            const mySettlementsOwed = transaction.settlements.filter(s => s.to.toLowerCase() === 'you');
+            const totalOwedToYou = mySettlementsOwed.reduce((sum, s) => sum + s.amount, 0);
+            const settledToYou = mySettlementsOwed.filter(s => s.settled).reduce((sum, s) => sum + s.amount, 0);
+            // Find your share
+            const perPerson = transaction.amount / transaction.splitUsers.length;
+            // Find how much you actually paid
+            const youPaid = (transaction.payers || []).filter(p => p.name.toLowerCase() === 'you').reduce((sum, p) => sum + p.amount, 0);
+            // Your effective expense = what you paid - settlements already received
+            return Math.max(0, youPaid - settledToYou);
+        }
+
+        function getTotalIncome() {
+            return transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+        }
+
+        function getTotalExpense() {
+            return transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + getEffectiveExpenseAmount(t), 0);
+        }
+
+        // ═══ SETTLE - Reduces expense & adds income ═══
+        function settleSplitUser(transactionId, userIndex) {
+            const transaction = transactions.find(t => t.id === transactionId);
+            if (!transaction || !transaction.splitUsers || userIndex >= transaction.splitUsers.length) return;
+            
+            const user = transaction.splitUsers[userIndex];
+            if (user.settled || user.name.toLowerCase() === 'you') return;
+            
+            const amountPerPerson = transaction.amount / transaction.splitUsers.length;
+            user.settled = true;
+            
+            // Add settlement as income entry
+            const incomeTransaction = {
+                id: Date.now(),
+                type: 'income',
+                amount: amountPerPerson,
+                description: `Settlement from ${user.name} - ${transaction.description}`,
+                category: 'Settlement',
+                date: new Date().toISOString().split('T')[0],
+                splitUsers: null
+            };
+            transactions.unshift(incomeTransaction);
+            
+            addToHistory('settle', {
+                title: `Settled with ${user.name}`,
+                amount: amountPerPerson,
+                description: transaction.description,
+                personName: user.name
+            });
+            
+            saveData();
+            updateDisplay();
+            if (document.getElementById('summary').classList.contains('active')) updateCharts();
+        }
+
+        // ═══ DISPLAY ═══
+        function updateDisplay() {
+            const income = getTotalIncome();
+            const expense = getTotalExpense();
+            const balance = income - expense;
+
+            document.getElementById('totalBalance').textContent = `₹${balance.toFixed(2)}`;
+            document.getElementById('totalIncome').textContent = `₹${income.toFixed(2)}`;
+            document.getElementById('totalExpense').textContent = `₹${expense.toFixed(2)}`;
+            document.getElementById('summaryBalance').textContent = `₹${balance.toFixed(2)}`;
+
+            const recentHTML = transactions.length > 0
+                ? transactions.slice(0, 5).map(t => createTransactionHTML(t)).join('')
+                : '<div class="empty-state"><div class="icon">📭</div><p>No transactions yet</p></div>';
+            document.getElementById('recentTransactions').innerHTML = recentHTML;
+
+            const allHTML = transactions.length > 0
+                ? transactions.map(t => createTransactionHTML(t)).join('')
+                : '<div class="empty-state"><div class="icon">📭</div><p>No transactions yet</p></div>';
+            document.getElementById('allTransactions').innerHTML = allHTML;
+
+            document.getElementById('profileTransactions').textContent = transactions.length;
+            const categories = new Set(transactions.map(t => t.category));
+            document.getElementById('profileCategories').textContent = categories.size;
+            
+            if (transactions.length > 0) {
+                const oldestDate = new Date(Math.min(...transactions.map(t => new Date(t.date).getTime())));
+                document.getElementById('profileDays').textContent = Math.floor((new Date() - oldestDate) / (1000 * 60 * 60 * 24));
+            }
+        }
+
+        function createTransactionHTML(transaction) {
+            const sign = transaction.type === 'income' ? '+' : '-';
+            const displayAmount = transaction.type === 'income' 
+                ? transaction.amount 
+                : getEffectiveExpenseAmount(transaction);
+            let splitInfo = '';
+            
+            if (transaction.splitUsers && transaction.splitUsers.length > 1) {
+                const perPerson = (transaction.amount / transaction.splitUsers.length).toFixed(2);
+
+                // Payer info line
+                let payerLine = '';
+                if (transaction.payers && transaction.payers.length > 0) {
+                    payerLine = '<div style="font-size:10px;color:var(--text-muted);margin-top:4px">\ud83d\udcb3 Paid by: ' + 
+                        transaction.payers.map(p => p.name + ' \u20b9' + p.amount.toFixed(2)).join(', ') + '</div>';
+                }
+
+                // Build settlements: use stored or auto-generate for legacy transactions
+                let settlements = transaction.settlements;
+                if (!settlements || settlements.length === 0) {
+                    const payers = transaction.payers || [{name: 'You', amount: transaction.amount}];
+                    settlements = calculateSettlements(transaction.amount, transaction.splitUsers, payers);
+                    if (settlements) {
+                        settlements.forEach(s => {
+                            const oldUser = transaction.splitUsers.find(u => u.name === s.from);
+                            if (oldUser && oldUser.settled) s.settled = true;
+                        });
+                    }
+                }
+
+                // Settlement lines
+                let settlementHTML = '';
+                if (settlements && settlements.length > 0) {
+                    settlementHTML = '<div class="settlement-summary">' +
+                        '<div class="settlement-summary-title">\ud83d\udcb8 Who pays whom</div>' +
+                        settlements.map((s, si) => {
+                            const canAct = !s.settled && transaction.type === 'expense';
+                            return '<div class="settlement-line ' + (s.settled ? 'settled-line' : '') + '">' +
+                                '<div class="who">' +
+                                    '<span style="font-weight:700">' + s.from + '</span>' +
+                                    '<span class="settlement-arrow">\u2192</span>' +
+                                    '<span style="font-weight:700">' + s.to + '</span>' +
+                                '</div>' +
+                                '<div style="display:flex;align-items:center;gap:4px">' +
+                                    '<span class="s-amount">\u20b9' + s.amount.toFixed(2) + '</span>' +
+                                    (s.settled ? '<span style="color:var(--income);font-size:10px;font-weight:700">\u2713 Paid</span>' : '') +
+                                    (canAct ? '<button class="send-bill-split-btn" onclick="openSendBillForSettlement(' + transaction.id + ',' + si + ')" title="Send bill">\ud83d\udce4</button>' : '') +
+                                    (canAct ? '<button class="settle-btn" onclick="settleSettlement(' + transaction.id + ',' + si + ')">Settle</button>' : '') +
+                                '</div>' +
+                            '</div>';
+                        }).join('') + '</div>';
+                } else {
+                    settlementHTML = '<div style="font-size:11px;color:var(--income);margin-top:6px;font-weight:700">\u2705 All settled!</div>';
+                }
+
+                splitInfo = '<span class="split-badge">Split ' + transaction.splitUsers.length + ' ways \u2022 \u20b9' + perPerson + '/person</span>' + payerLine + settlementHTML;
+            }
+            
+            return `
+                <div class="transaction-item ${transaction.type}">
+                    <div class="transaction-actions">
+                        ${transaction.splitUsers && transaction.splitUsers.length > 1 ? '<button class="action-btn send" onclick="openSendBillForTransaction(' + transaction.id + ')" title="Send Bill">\ud83d\udce4</button>' : ''}
+                        <button class="action-btn edit" onclick="openEditTransactionModal(${transaction.id})" title="Edit">\u270f\ufe0f</button>
+                        <button class="action-btn delete" onclick="openDeleteConfirmModal(${transaction.id})" title="Delete">\ud83d\uddd1\ufe0f</button>
+                    </div>
+                    <div class="transaction-header">
+                        <div class="transaction-info">
+                            <div class="title">${transaction.description}</div>
+                            <div class="category">${transaction.category}</div>
+                            <div class="date">${new Date(transaction.date).toLocaleDateString('en-IN')}</div>
+                            ${transaction.paymentModeName ? '<div class="payment-mode-tag">' + transaction.paymentModeName + '</div>' : ''}
+                            ${splitInfo}
+                        </div>
+                        <div class="transaction-amount ${transaction.type}">
+                            ${sign}\u20b9${displayAmount.toFixed(2)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ═══ CHARTS (Colorful!) ═══
+        function updateCharts() {
+            updateIncomeExpenseChart();
+            updateCategoryChart();
+            updateTrendChart();
+        }
+
+        function updateIncomeExpenseChart() {
+            const income = getTotalIncome();
+            const expense = getTotalExpense();
+            if (chartInstances.incomeExpense) chartInstances.incomeExpense.destroy();
+
+            const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
+            chartInstances.incomeExpense = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Income', 'Expense'],
+                    datasets: [{
+                        data: [income, expense],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        hoverBackgroundColor: ['#059669', '#dc2626'],
+                        borderWidth: 3,
+                        borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1a1d2e' : '#ffffff',
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: getChartTextColor(),
+                                padding: 16,
+                                font: { family: 'Plus Jakarta Sans', size: 13, weight: '600' },
+                                usePointStyle: true,
+                                pointStyleWidth: 12
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCategoryChart() {
+            const expenseTransactions = transactions.filter(t => t.type === 'expense');
+            const categoryData = {};
+            
+            expenseTransactions.forEach(t => {
+                const effective = getEffectiveExpenseAmount(t);
+                if (effective > 0) {
+                    categoryData[t.category] = (categoryData[t.category] || 0) + effective;
+                }
+            });
+
+            if (chartInstances.category) chartInstances.category.destroy();
+
+            const labels = Object.keys(categoryData);
+            const values = Object.values(categoryData);
+            const bgColors = labels.map((label, i) => (CATEGORY_COLORS[label] || {}).bg || PIE_PALETTE[i % PIE_PALETTE.length]);
+            const borderColors = labels.map((label, i) => (CATEGORY_COLORS[label] || {}).border || PIE_PALETTE[i % PIE_PALETTE.length]);
+
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            chartInstances.category = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: bgColors,
+                        borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1a1d2e' : '#ffffff',
+                        borderWidth: 3,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: getChartTextColor(),
+                                padding: 12,
+                                font: { family: 'Plus Jakarta Sans', size: 12, weight: '600' },
+                                usePointStyle: true,
+                                pointStyleWidth: 10
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = ((context.parsed / total) * 100).toFixed(1);
+                                    return ` ${context.label}: ₹${context.parsed.toFixed(2)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTrendChart() {
+            const last7Days = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                last7Days.push(d.toISOString().split('T')[0]);
+            }
+
+            const dailyExpenses = last7Days.map(date =>
+                transactions.filter(t => t.type === 'expense' && t.date === date)
+                    .reduce((sum, t) => sum + getEffectiveExpenseAmount(t), 0)
+            );
+
+            if (chartInstances.trend) chartInstances.trend.destroy();
+
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 220);
+            gradient.addColorStop(0, isDark ? 'rgba(129, 140, 248, 0.25)' : 'rgba(99, 102, 241, 0.15)');
+            gradient.addColorStop(1, isDark ? 'rgba(129, 140, 248, 0)' : 'rgba(99, 102, 241, 0)');
+
+            chartInstances.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: last7Days.map(d => new Date(d).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})),
+                    datasets: [{
+                        label: 'Daily Expenses (₹)',
+                        data: dailyExpenses,
+                        borderColor: isDark ? '#818cf8' : '#6366f1',
+                        backgroundColor: gradient,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: isDark ? '#818cf8' : '#6366f1',
+                        pointBorderColor: isDark ? '#1a1d2e' : '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: getChartTextColor(), font: { family: 'Plus Jakarta Sans' } },
+                            grid: { color: getChartGridColor() }
+                        },
+                        x: {
+                            ticks: { color: getChartTextColor(), font: { family: 'Plus Jakarta Sans', size: 11 } },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // ═══ MONTHLY SUMMARY ═══
+        function updateMonthlySummary() {
+            const monthlyData = {};
+            transactions.forEach(t => {
+                const date = new Date(t.date);
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                if (!monthlyData[key]) {
+                    monthlyData[key] = {
+                        income: 0, expense: 0,
+                        monthName: date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+                        categories: {}
+                    };
+                }
+                if (t.type === 'income') {
+                    monthlyData[key].income += t.amount;
+                } else {
+                    const eff = getEffectiveExpenseAmount(t);
+                    monthlyData[key].expense += eff;
+                    if (eff > 0) monthlyData[key].categories[t.category] = (monthlyData[key].categories[t.category] || 0) + eff;
+                }
+            });
+
+            const sorted = Object.keys(monthlyData).sort().reverse();
+            const container = document.getElementById('monthlySummaryList');
+            
+            if (sorted.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding:20px"><p>No monthly data yet</p></div>';
+                return;
+            }
+
+            container.innerHTML = sorted.slice(0, 6).map((key, i) => {
+                const d = monthlyData[key];
+                const bal = d.income - d.expense;
+                const cls = bal >= 0 ? 'positive' : 'negative';
+                const sign = bal >= 0 ? '+' : '';
+                const cats = Object.entries(d.categories).sort((a, b) => b[1] - a[1]);
+                const catHTML = cats.length > 0 ? `
+                    <div class="category-breakdown" id="categories-${i}" style="display:none">
+                        <div class="category-breakdown-title">📊 Category Breakdown:</div>
+                        ${cats.map(([c, a]) => `<div class="category-item"><span class="category-name">${c}</span><span class="category-amount">₹${a.toFixed(2)}</span></div>`).join('')}
+                    </div>
+                    <button class="toggle-categories" onclick="toggleCategories(${i})"><span id="toggle-text-${i}">▼ Show Categories</span></button>
+                ` : '';
+                return `<div class="month-item">
+                    <div class="month-header"><div class="month-name">${d.monthName}</div><div class="month-balance ${cls}">${sign}₹${bal.toFixed(2)}</div></div>
+                    <div class="month-details"><span class="month-income">Income: ₹${d.income.toFixed(2)}</span><span class="month-expense">Expense: ₹${d.expense.toFixed(2)}</span></div>
+                    ${catHTML}
+                </div>`;
+            }).join('');
+        }
+
+        function toggleCategories(index) {
+            const el = document.getElementById(`categories-${index}`);
+            const txt = document.getElementById(`toggle-text-${index}`);
+            if (el.style.display === 'none') {
+                el.style.display = 'block';
+                txt.textContent = '▲ Hide Categories';
+            } else {
+                el.style.display = 'none';
+                txt.textContent = '▼ Show Categories';
+            }
+        }
+
+        // ═══ HISTORY ═══
+        function updateHistoryDisplay() {
+            const container = document.getElementById('historyList');
+            if (activityHistory.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>No activity history yet</p></div>';
+                return;
+            }
+            container.innerHTML = activityHistory.map(item => {
+                const time = new Date(item.timestamp).toLocaleString('en-IN', {
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                let cssClass = 'history-item', badge = '', content = '';
+                if (item.action === 'delete') {
+                    cssClass += ' deleted';
+                    badge = '<span class="history-badge-inline delete">DELETED</span>';
+                    content = `<strong>${item.details.description || '(no description)'}</strong><br>${item.details.type.toUpperCase()} • ₹${item.details.amount.toFixed(2)}<br>${item.details.category} • ${new Date(item.details.date).toLocaleDateString('en-IN')}`;
+                } else if (item.action === 'edit') {
+                    cssClass += ' edited';
+                    badge = '<span class="history-badge-inline edit">EDITED</span>';
+                    const changes = [];
+                    if (item.details.old.amount !== item.details.new.amount) changes.push(`Amount: <span class="old-value">₹${item.details.old.amount.toFixed(2)}</span> → <span class="new-value">₹${item.details.new.amount.toFixed(2)}</span>`);
+                    if (item.details.old.description !== item.details.new.description) changes.push(`Description: "${item.details.old.description}" → "${item.details.new.description}"`);
+                    if (item.details.old.category !== item.details.new.category) changes.push(`Category: ${item.details.old.category} → ${item.details.new.category}`);
+                    if (item.details.old.date !== item.details.new.date) changes.push(`Date: ${new Date(item.details.old.date).toLocaleDateString('en-IN')} → ${new Date(item.details.new.date).toLocaleDateString('en-IN')}`);
+                    content = `<strong>${item.details.new.description || '(no description)'}</strong><br>${item.details.type.toUpperCase()} • ₹${item.details.new.amount.toFixed(2)}<br>${changes.map(c => `<div style="margin:4px 0">${c}</div>`).join('') || '<em>No significant changes</em>'}`;
+                } else if (item.action === 'settle') {
+                    cssClass += ' edited';
+                    badge = '<span class="history-badge-inline settle">SETTLED</span>';
+                    content = `<strong>${item.details.personName}</strong> paid ₹${item.details.amount.toFixed(2)}<br>For: ${item.details.description || '(no description)'}`;
+                }
+                return `<div class="${cssClass}"><div class="history-header"><div class="history-action">${badge}${item.details.title || item.action}</div><div class="history-timestamp">${time}</div></div><div class="history-details">${content}</div></div>`;
+            }).join('');
+        }
+
+        // ═══ PROFILE ═══
+        function updateProfileDisplay() {
+            const initials = userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+            document.getElementById('profileAvatarText').textContent = initials;
+            document.getElementById('displayProfileName').textContent = userProfile.name;
+            document.getElementById('displayProfileEmail').textContent = userProfile.email;
+        }
+
+        function openEditProfileModal() {
+            document.getElementById('editProfileName').value = userProfile.name;
+            document.getElementById('editProfileEmail').value = userProfile.email;
+            document.getElementById('editProfilePhone').value = userProfile.phone || '';
+            document.getElementById('editProfileModal').classList.add('active');
+        }
+        function closeEditProfileModal() { document.getElementById('editProfileModal').classList.remove('active'); }
+
+        function saveProfile() {
+            const name = document.getElementById('editProfileName').value.trim();
+            const email = document.getElementById('editProfileEmail').value.trim();
+            const phone = document.getElementById('editProfilePhone').value.trim();
+            if (name && email) {
+                userProfile = { name, email, phone };
+                saveData();
+                updateProfileDisplay();
+                closeEditProfileModal();
+            } else {
+                alert('Please fill in name and email');
+            }
+        }
+
+        // ═══ EDIT / DELETE TRANSACTIONS ═══
+        function openEditTransactionModal(id) {
+            const t = transactions.find(x => x.id === id);
+            if (t) {
+                currentEditingTransactionId = id;
+                document.getElementById('editTransactionAmount').value = t.amount;
+                document.getElementById('editTransactionDescription').value = t.description;
+                document.getElementById('editTransactionCategory').value = t.category;
+                document.getElementById('editTransactionDate').value = t.date;
+                document.getElementById('editTransactionModal').classList.add('active');
+            }
+        }
+        function closeEditTransactionModal() { document.getElementById('editTransactionModal').classList.remove('active'); currentEditingTransactionId = null; }
+
+        function saveTransactionEdit() {
+            if (!currentEditingTransactionId) return;
+            const t = transactions.find(x => x.id === currentEditingTransactionId);
+            if (!t) return;
+            const oldData = { ...t };
+
+            const newAmount = parseFloat(document.getElementById('editTransactionAmount').value) || 0;
+            const newDesc = document.getElementById('editTransactionDescription').value.trim();
+            const newCat = document.getElementById('editTransactionCategory').value;
+            const newDate = document.getElementById('editTransactionDate').value;
+
+            t.amount = newAmount;
+            t.description = newDesc;
+            t.category = newCat;
+            t.date = newDate;
+
+            addToHistory('edit', {
+                type: t.type, id: t.id,
+                old: { amount: oldData.amount, description: oldData.description, category: oldData.category, date: oldData.date },
+                new: { amount: t.amount, description: t.description, category: t.category, date: t.date },
+                title: `Edited ${t.type}: ${t.description || '(no description)'}`
+            });
+
+            saveData();
+            updateDisplay();
+            if (document.getElementById('summary').classList.contains('active')) updateCharts();
+            closeEditTransactionModal();
+        }
+
+        function openDeleteConfirmModal(id) { currentDeletingTransactionId = id; document.getElementById('deleteConfirmModal').classList.add('active'); }
+        function closeDeleteConfirmModal() { document.getElementById('deleteConfirmModal').classList.remove('active'); currentDeletingTransactionId = null; }
+
+        function confirmDelete() {
+            if (!currentDeletingTransactionId) return;
+            const t = transactions.find(x => x.id === currentDeletingTransactionId);
+            if (t) {
+                addToHistory('delete', {
+                    type: t.type, amount: t.amount, description: t.description,
+                    category: t.category, date: t.date,
+                    title: `Deleted ${t.type}: ${t.description || '(no description)'}`
+                });
+                transactions = transactions.filter(x => x.id !== currentDeletingTransactionId);
+                saveData();
+                updateDisplay();
+                if (document.getElementById('summary').classList.contains('active')) updateCharts();
+            }
+            closeDeleteConfirmModal();
+        }
+
+
+        // ═══ SMART SPLIT CALCULATION ═══
+        let expensePayers = []; // [{name, amount}]
+
+        function calculateSettlements(totalAmount, splitUsers, payers) {
+            // Each person's equal share
+            const perPerson = totalAmount / splitUsers.length;
+            // Net balance = what they paid - their share
+            // Positive = they overpaid (others owe them)
+            // Negative = they underpaid (they owe others)
+            const balances = splitUsers.map(u => {
+                const paid = payers.filter(p => p.name === u.name).reduce((s, p) => s + p.amount, 0);
+                return { name: u.name, balance: paid - perPerson };
+            });
+
+            // Separate into creditors (overpaid) and debtors (underpaid)
+            const creditors = balances.filter(b => b.balance > 0.01).sort((a, b) => b.balance - a.balance);
+            const debtors = balances.filter(b => b.balance < -0.01).sort((a, b) => a.balance - b.balance);
+
+            const settlements = [];
+            let ci = 0, di = 0;
+            const creds = creditors.map(c => ({...c}));
+            const debts = debtors.map(d => ({...d, balance: Math.abs(d.balance)}));
+
+            while (ci < creds.length && di < debts.length) {
+                const amount = Math.min(creds[ci].balance, debts[di].balance);
+                if (amount > 0.01) {
+                    settlements.push({
+                        from: debts[di].name,
+                        to: creds[ci].name,
+                        amount: Math.round(amount * 100) / 100,
+                        settled: false
+                    });
+                }
+                creds[ci].balance -= amount;
+                debts[di].balance -= amount;
+                if (creds[ci].balance < 0.01) ci++;
+                if (debts[di].balance < 0.01) di++;
+            }
+            return settlements;
+        }
+
+        function openAddPayerModal() {
+            const select = document.getElementById('payerSelect');
+            select.innerHTML = '<option value="">Choose who paid</option>';
+            expenseSplitUsers.forEach(u => {
+                // Don't add if already a payer
+                const alreadyPayer = expensePayers.some(p => p.name === u.name);
+                if (!alreadyPayer) {
+                    select.innerHTML += '<option value="' + u.name + '">' + u.name + '</option>';
+                }
+            });
+            document.getElementById('payerAmountInput').value = '';
+            document.getElementById('addPayerModal').classList.add('active');
+        }
+
+        function closeAddPayerModal() {
+            document.getElementById('addPayerModal').classList.remove('active');
+        }
+
+        function addPayer() {
+            const name = document.getElementById('payerSelect').value;
+            const amount = parseFloat(document.getElementById('payerAmountInput').value) || 0;
+            if (!name || amount <= 0) { alert('Please select a person and enter amount paid'); return; }
+            expensePayers.push({ name, amount });
+            updatePayersDisplay();
+            updateSettlementPreview();
+            closeAddPayerModal();
+        }
+
+        function removePayer(index) {
+            expensePayers.splice(index, 1);
+            updatePayersDisplay();
+            updateSettlementPreview();
+        }
+
+        function onPayerAmountChange(index, value) {
+            expensePayers[index].amount = parseFloat(value) || 0;
+            updateSettlementPreview();
+        }
+
+        function updatePayersDisplay() {
+            const container = document.getElementById('payersList');
+            if (expensePayers.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text-muted);font-size:12px;">No payers added yet</div>';
+                return;
+            }
+            container.innerHTML = expensePayers.map((p, i) => 
+                '<div class="payer-row">' +
+                    '<span class="payer-name-display">' + p.name + '</span>' +
+                    '<span style="font-size:13px;color:var(--text-secondary);font-weight:700">₹</span>' +
+                    '<input type="number" class="payer-amount-input" value="' + p.amount + '" step="0.01" onchange="onPayerAmountChange(' + i + ', this.value)" oninput="onPayerAmountChange(' + i + ', this.value)">' +
+                    '<button class="payer-remove-btn" onclick="removePayer(' + i + ')" title="Remove">&times;</button>' +
+                '</div>'
+            ).join('');
+        }
+
+        function updateSettlementPreview() {
+            const totalAmount = parseFloat(document.getElementById('expenseAmount').value) || 0;
+            const totalPaid = expensePayers.reduce((s, p) => s + p.amount, 0);
+            const validation = document.getElementById('paymentValidation');
+            const previewBox = document.getElementById('settlementPreview');
+            const previewLines = document.getElementById('settlementLines');
+
+            if (expensePayers.length === 0 || expenseSplitUsers.length < 2) {
+                validation.innerHTML = '';
+                previewBox.style.display = 'none';
+                return;
+            }
+
+            const diff = totalAmount - totalPaid;
+            if (Math.abs(diff) > 0.01) {
+                validation.innerHTML = '<div class="remaining-warn">⚠️ Total paid: ₹' + totalPaid.toFixed(2) + ' | Bill: ₹' + totalAmount.toFixed(2) + ' | ' + (diff > 0 ? 'Remaining: ₹' + diff.toFixed(2) : 'Overpaid: ₹' + Math.abs(diff).toFixed(2)) + '</div>';
+                previewBox.style.display = 'none';
+                return;
+            }
+
+            validation.innerHTML = '<div class="remaining-ok">✅ Payment fully accounted for</div>';
+
+            // Calculate settlements
+            const settlements = calculateSettlements(totalAmount, expenseSplitUsers, expensePayers);
+
+            if (settlements.length === 0) {
+                previewLines.innerHTML = '<div style="text-align:center;padding:8px;color:var(--income);font-size:12px;font-weight:700">✅ Everyone paid their fair share!</div>';
+            } else {
+                previewLines.innerHTML = settlements.map(s =>
+                    '<div class="settlement-row">' +
+                        '<span style="font-weight:700;color:var(--text-primary)">' + s.from + '</span>' +
+                        '<span class="settlement-arrow">→ pays →</span>' +
+                        '<span style="font-weight:700;color:var(--text-primary)">' + s.to + '</span>' +
+                        '<span class="settlement-amount">₹' + s.amount.toFixed(2) + '</span>' +
+                    '</div>'
+                ).join('');
+            }
+            previewBox.style.display = 'block';
+        }
+
+
+        // ACCOUNTS WALLETS
+        let accounts = [];
+        let editingAccountId = null;
+        const ACCT_ICONS = {bank:'\ud83c\udfe6',upi:'\ud83d\udcf1',cash:'\ud83d\udcb5',credit:'\ud83d\udcb3',other:'\ud83d\udce6'};
+
+        function loadAccounts() { try { const s=localStorage.getItem('expenseTrackerAccounts'); if(s) accounts=JSON.parse(s); } catch(e){} }
+        function saveAccounts() { localStorage.setItem('expenseTrackerAccounts', JSON.stringify(accounts)); }
+
+        function openAddAccountModal() {
+            document.getElementById('newAccountName').value='';
+            document.getElementById('newAccountType').value='bank';
+            document.getElementById('newAccountBalance').value='';
+            document.getElementById('addAccountModal').classList.add('active');
+        }
+        function closeAddAccountModal() { document.getElementById('addAccountModal').classList.remove('active'); }
+
+        function addAccount() {
+            const n=document.getElementById('newAccountName').value.trim();
+            const t=document.getElementById('newAccountType').value;
+            const b=parseFloat(document.getElementById('newAccountBalance').value)||0;
+            if(!n){alert('Enter account name');return;}
+            accounts.push({id:Date.now(),name:n,type:t,balance:b});
+            saveAccounts(); updateAccountsDisplay(); populatePaymentModeDropdowns(); closeAddAccountModal();
+        }
+
+        function openEditAccountModal(aid) {
+            const a=accounts.find(x=>x.id===aid); if(!a)return;
+            editingAccountId=aid;
+            document.getElementById('editAccountName').value=a.name;
+            document.getElementById('editAccountType').value=a.type;
+            document.getElementById('editAccountBalance').value=a.balance;
+            document.getElementById('editAccountModal').classList.add('active');
+        }
+        function closeEditAccountModal() { document.getElementById('editAccountModal').classList.remove('active'); editingAccountId=null; }
+
+        function saveAccountEdit() {
+            if(!editingAccountId)return;
+            const a=accounts.find(x=>x.id===editingAccountId); if(!a)return;
+            a.name=document.getElementById('editAccountName').value.trim();
+            a.type=document.getElementById('editAccountType').value;
+            a.balance=parseFloat(document.getElementById('editAccountBalance').value)||0;
+            saveAccounts(); updateAccountsDisplay(); populatePaymentModeDropdowns(); closeEditAccountModal();
+        }
+
+        function deleteAccount() {
+            if(!editingAccountId||!confirm('Delete this account?'))return;
+            accounts=accounts.filter(a=>a.id!==editingAccountId);
+            saveAccounts(); updateAccountsDisplay(); populatePaymentModeDropdowns(); closeEditAccountModal();
+        }
+
+        function updateAccountBalance(aid, amt, type) {
+            const a=accounts.find(x=>x.id===aid); if(!a)return;
+            if(type==='expense') a.balance-=amt;
+            else if(type==='income') a.balance+=amt;
+            saveAccounts();
+        }
+
+        function updateAccountsDisplay() {
+            const el=document.getElementById('accountsList');
+            const te=document.getElementById('accountsTotalBalance');
+            if(!el)return;
+            if(!accounts.length){
+                el.innerHTML='<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:12px">No accounts yet. Add your bank, UPI or cash accounts.</div>';
+                if(te) te.textContent='\u20b90.00';
+                return;
+            }
+            const total=accounts.reduce((s,a)=>s+a.balance,0);
+            if(te) te.textContent='\u20b9'+total.toFixed(2);
+            el.innerHTML=accounts.map(a=>{
+                const ic=ACCT_ICONS[a.type]||'\ud83d\udce6';
+                const bc=a.balance<0?' negative':'';
+                return '<div class="account-card"><div class="account-card-info"><span class="account-icon">'+ic+'</span><span class="account-name">'+a.name+'</span></div><span class="account-balance'+bc+'">\u20b9'+a.balance.toFixed(2)+'</span><div class="account-actions"><button class="account-action-btn" onclick="openEditAccountModal('+a.id+')" title="Edit">\u270f\ufe0f</button></div></div>';
+            }).join('');
+        }
+
+        function populatePaymentModeDropdowns() {
+            ['expensePaymentMode','incomePaymentMode'].forEach(id=>{
+                const el=document.getElementById(id); if(!el)return;
+                const cv=el.value;
+                el.innerHTML='<option value="">Select account (optional)</option>';
+                accounts.forEach(a=>{
+                    const ic=ACCT_ICONS[a.type]||'\ud83d\udce6';
+                    el.innerHTML+='<option value="'+a.id+'">'+ic+' '+a.name+' (\u20b9'+a.balance.toFixed(2)+')</option>';
+                });
+                if(cv) el.value=cv;
+            });
+        }
+
+        function getAccountNameById(id) { const a=accounts.find(x=>x.id===parseInt(id)); return a?a.name:''; }
+
+        // ═══ SPLIT MANAGEMENT ═══
+        function toggleExpenseSplit() {
+            const checked = document.getElementById('expenseSplitCheck').checked;
+            document.getElementById('expenseSplitSection').style.display = checked ? 'block' : 'none';
+            if (checked && expenseSplitUsers.length === 0) {
+                expenseSplitUsers = [{name: 'You', amount: 0}];
+                expensePayers = [];
+                updateSplitUsersDisplay('expense');
+                updatePayersDisplay();
+            }
+        }
+
+        function openAddUserModal(type) { currentSplitType = type; document.getElementById('addUserModal').classList.add('active'); }
+        function closeAddUserModal() { document.getElementById('addUserModal').classList.remove('active'); document.getElementById('newUserName').value = ''; }
+
+        function addUserToSplit() {
+            const name = document.getElementById('newUserName').value.trim();
+            if (name) {
+                if (currentSplitType === 'expense') {
+                    expenseSplitUsers.push({name, amount: 0});
+                    updateSplitUsersDisplay('expense');
+                    updateSettlementPreview();
+                }
+                closeAddUserModal();
+            }
+        }
+
+        function updateSplitUsersDisplay(type) {
+            const amount = parseFloat(document.getElementById(`${type}Amount`).value) || 0;
+            const users = type === 'expense' ? expenseSplitUsers : [];
+            const container = document.getElementById(`${type}SplitUsers`);
+            if (users.length > 0) {
+                const perPerson = (amount / users.length).toFixed(2);
+                container.innerHTML = users.map(u => `
+                    <div class="user-split-item">
+                        <span class="user-name">${u.name}</span>
+                        <span class="user-amount">₹${perPerson}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        document.getElementById('expenseAmount').addEventListener('input', function() {
+            if (document.getElementById('expenseSplitCheck').checked) {
+                updateSplitUsersDisplay('expense');
+                updateSettlementPreview();
+            }
+        });
+
+        // ═══ MODALS ═══
+        function closeAllModals() {
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+            currentEditingTransactionId = null;
+            currentDeletingTransactionId = null;
+            currentBillData = null;
+        }
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) { if (e.target === modal) closeAllModals(); });
+        });
+
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeAllModals(); });
+
+
+
+        // ═══ SETTLE (Handles both new & legacy transactions) ═══
+        function ensureSettlements(t) {
+            if (!t.settlements || t.settlements.length === 0) {
+                const payers = t.payers || [{name: 'You', amount: t.amount}];
+                t.settlements = calculateSettlements(t.amount, t.splitUsers, payers);
+                if (t.settlements) {
+                    t.settlements.forEach(s => {
+                        const oldUser = t.splitUsers.find(u => u.name === s.from);
+                        if (oldUser && oldUser.settled) s.settled = true;
+                    });
+                }
+                if (!t.payers) t.payers = payers;
+                saveData();
+            }
+            return t.settlements || [];
+        }
+
+        function settleSettlement(transactionId, settlementIndex) {
+            const t = transactions.find(x => x.id === transactionId);
+            if (!t || !t.splitUsers) return;
+            const settlements = ensureSettlements(t);
+            if (settlementIndex >= settlements.length) return;
+            const s = settlements[settlementIndex];
+            if (s.settled) return;
+            s.settled = true;
+            const matchUser = t.splitUsers.find(u => u.name === s.from);
+            if (matchUser) matchUser.settled = true;
+
+            if (s.to.toLowerCase() === 'you') {
+                transactions.unshift({
+                    id: Date.now(),
+                    type: 'income',
+                    amount: s.amount,
+                    description: 'Settlement from ' + s.from + ' - ' + t.description,
+                    category: 'Settlement',
+                    date: new Date().toISOString().split('T')[0],
+                    splitUsers: null, payers: null, settlements: null
+                });
+            }
+
+            addToHistory('settle', {
+                title: 'Settled: ' + s.from + ' → ' + s.to,
+                amount: s.amount,
+                description: t.description,
+                personName: s.from
+            });
+
+            saveData(); updateDisplay();
+            if (document.getElementById('summary').classList.contains('active')) updateCharts();
+        }
+
+        function openSendBillForSettlement(tid, si) {
+            const t = transactions.find(x => x.id === tid);
+            if (!t || !t.splitUsers) return;
+            const settlements = ensureSettlements(t);
+            if (si >= settlements.length) return;
+            const s = settlements[si];
+            currentBillData = { personName: s.from, amount: s.amount, description: t.description, totalAmount: t.amount, splitCount: t.splitUsers.length };
+            document.getElementById('billPreview').innerHTML = '<div style="text-align:center;margin-bottom:8px;font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Bill Preview</div><strong>To: ' + s.from + '</strong><br><span style="color:var(--text-secondary)">For: ' + t.description + '</span><div class="bill-amount">₹' + s.amount.toFixed(2) + '</div><span style="font-size:11px;color:var(--text-muted)">' + s.from + ' needs to pay ' + s.to + '</span>';
+            document.getElementById('sendBillModal').classList.add('active');
+        }
+
+        // ═══ SEND BILL ═══
+        let currentBillData = null;
+
+        function generateBillText(personName, amount, description, totalAmount, splitCount) {
+            const senderName = userProfile.name !== 'Enter your name' ? userProfile.name : 'Your friend';
+            return '💰 Payment Reminder\n\nHi ' + personName + ',\n\nThis is a friendly reminder about a shared expense:\n\n📝 ' + description + '\n💵 Total: ₹' + totalAmount.toFixed(2) + '\n👥 Split: ' + splitCount + ' ways\n━━━━━━━━━━━━━━\n🔴 Your share: ₹' + amount.toFixed(2) + '\n━━━━━━━━━━━━━━\n\nPlease settle at your earliest convenience.\n\n— ' + senderName + '\n📱 Sent via Expense Tracker';
+        }
+
+        function openSendBillForUser(tid, idx) {
+            const t = transactions.find(x => x.id === tid);
+            if (!t || !t.splitUsers || idx >= t.splitUsers.length) return;
+            const u = t.splitUsers[idx];
+            const pp = t.amount / t.splitUsers.length;
+            currentBillData = { personName: u.name, amount: pp, description: t.description, totalAmount: t.amount, splitCount: t.splitUsers.length };
+            document.getElementById('billPreview').innerHTML = '<div style="text-align:center;margin-bottom:8px;font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Bill Preview</div><strong>To: ' + u.name + '</strong><br><span style="color:var(--text-secondary)">For: ' + t.description + '</span><div class="bill-amount">₹' + pp.toFixed(2) + '</div><span style="font-size:11px;color:var(--text-muted)">Total ₹' + t.amount.toFixed(2) + ' split ' + t.splitUsers.length + ' ways</span>';
+            document.getElementById('sendBillModal').classList.add('active');
+        }
+
+        function openSendBillForTransaction(tid) {
+            const t = transactions.find(x => x.id === tid);
+            if (!t || !t.splitUsers) return;
+            const settlements = ensureSettlements(t);
+            const si = settlements.findIndex(s => !s.settled);
+            if (si >= 0) openSendBillForSettlement(tid, si);
+        }
+
+        function closeSendBillModal() { document.getElementById('sendBillModal').classList.remove('active'); currentBillData = null; }
+
+        function getBillMessage() {
+            if (!currentBillData) return '';
+            return generateBillText(currentBillData.personName, currentBillData.amount, currentBillData.description, currentBillData.totalAmount, currentBillData.splitCount);
+        }
+
+        function sendViaWhatsApp() { window.open('https://wa.me/?text=' + encodeURIComponent(getBillMessage()), '_blank'); closeSendBillModal(); }
+        function sendViaSMS() { window.open('sms:?body=' + encodeURIComponent(getBillMessage()), '_blank'); closeSendBillModal(); }
+        function sendViaEmail() {
+            if (!currentBillData) return;
+            window.open('mailto:?subject=' + encodeURIComponent('Payment Reminder: ₹' + currentBillData.amount.toFixed(2) + ' for ' + currentBillData.description) + '&body=' + encodeURIComponent(getBillMessage()), '_blank');
+            closeSendBillModal();
+        }
+        function copyBillText() {
+            navigator.clipboard.writeText(getBillMessage()).then(() => { showToast('Copied to clipboard!'); closeSendBillModal(); }).catch(() => {
+                const ta = document.createElement('textarea'); ta.value = getBillMessage(); document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                showToast('Copied to clipboard!'); closeSendBillModal();
+            });
+        }
+        function showToast(msg) { const t = document.getElementById('copyToast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+
+        // ═══ FORM SUBMISSIONS ═══
+        document.getElementById('expenseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const isSplit = document.getElementById('expenseSplitCheck').checked;
+            const expPayMode = document.getElementById('expensePaymentMode').value;
+            let splitData = null;
+            if (isSplit && expenseSplitUsers.length > 1) {
+                const totalAmount = parseFloat(document.getElementById('expenseAmount').value) || 0;
+                const totalPaid = expensePayers.reduce((s, p) => s + p.amount, 0);
+                if (expensePayers.length > 0 && Math.abs(totalAmount - totalPaid) > 0.01) {
+                    alert('Total paid (₹' + totalPaid.toFixed(2) + ') does not match bill amount (₹' + totalAmount.toFixed(2) + '). Please fix payments.');
+                    return;
+                }
+                splitData = {
+                    users: expenseSplitUsers,
+                    payers: expensePayers.length > 0 ? expensePayers : [{name: 'You', amount: totalAmount}]
+                };
+            }
+            addTransaction('expense',
+                document.getElementById('expenseAmount').value,
+                document.getElementById('expenseDescription').value,
+                document.getElementById('expenseCategory').value,
+                document.getElementById('expenseDate').value,
+                splitData
+            );
+            if (expPayMode) { const ea=parseFloat(document.getElementById('expenseAmount').value)||0; updateAccountBalance(parseInt(expPayMode),ea,'expense'); transactions[0].paymentMode=parseInt(expPayMode); transactions[0].paymentModeName=getAccountNameById(expPayMode); saveData(); populatePaymentModeDropdowns(); }
+            this.reset();
+            expenseSplitUsers = [];
+            expensePayers = [];
+            document.getElementById('expenseSplitSection').style.display = 'none';
+            showPage('home');
+        });
+
+        document.getElementById('incomeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const incPayMode = document.getElementById('incomePaymentMode').value;
+            addTransaction('income',
+                document.getElementById('incomeAmount').value,
+                document.getElementById('incomeDescription').value,
+                document.getElementById('incomeCategory').value,
+                document.getElementById('incomeDate').value
+            );
+                        if (incPayMode) { const ia=parseFloat(document.getElementById('incomeAmount').value)||0; updateAccountBalance(parseInt(incPayMode),ia,'income'); transactions[0].paymentMode=parseInt(incPayMode); transactions[0].paymentModeName=getAccountNameById(incPayMode); saveData(); populatePaymentModeDropdowns(); }
+this.reset();
+            showPage('home');
+        });
+
+        // ═══ INIT ═══
+        document.getElementById('expenseDate').valueAsDate = new Date();
+        document.getElementById('incomeDate').valueAsDate = new Date();
+        loadAccounts();
+        initializeData();
+        updateDisplay();
+        updateAccountsDisplay();
+        populatePaymentModeDropdowns();
+    </script>
+</body>
+</html>
